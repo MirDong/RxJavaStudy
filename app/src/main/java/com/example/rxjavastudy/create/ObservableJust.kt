@@ -12,15 +12,15 @@ fun just() {
         .subscribe {
             Log.d(Constants.TAG, "just: $it")
         }
-    if (!disposable.isDisposed) {
+    /*if (!disposable.isDisposed) {
         disposable.dispose()
-    }
+    }*/
 }
 
 fun justNumber() {
-    Observable.just(1 ,2, 3, 4)
+    Observable.just(1, 2, 3, 4)
         .map {
-            when(it) {
+            when (it) {
                 1 -> "One"
                 2 -> "Two"
                 3 -> "Three"

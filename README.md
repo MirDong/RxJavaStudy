@@ -93,7 +93,214 @@ implementation 'io.reactivex.rxjava2:rxandroid:2.1.0'
 
    Create操作符示意图：
 
-  ![Create操作符](app\image\observable_create.png)
+  ![Create操作符](https://github.com/MirDong/PictureGo/blob/master/blog/observable_create.png?raw=true)
 
   
+  
+  
 
+## 三、 操作符
+
+### Just操作符
+
+使用just可以创建一个发送指定事件的Observable，just上限为10，也即最多发送10个事件，在Create基础上简化了处理流程。
+
+```java
+Observable.just("Event1", "Event2", "Event3")
+    	  .subscribe(new Observer<String>() {
+               @Override
+            public void onSubscribe(Disposable d) {
+                Log.i(TAG, "onSubscribe--->");
+            }
+
+            @Override
+            public void onNext(String s) {
+                Log.i(TAG, "onNext--->" + s);
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                Log.i(TAG, "onError--->");
+            }
+
+            @Override
+            public void onComplete() {
+                Log.i(TAG, "onComplete--->");
+            }
+}
+```
+
+just操作符示意图
+
+![just操作符](https://github.com/MirDong/PictureGo/blob/master/blog/observbale_just.png?raw=true)
+
+### from操作符
+
+使用from相关操作符可以创建发送数组(Array)、集合(Iterable)、异步任务(future)的Observable，可将from相关的操作符分为以下几类：
+
+```java
+// 数组
+public static <T> Observable<T> fromArray(T... items)
+// 集合
+public static <T> Observable<T> fromIterable(Iterable<? extends T> source)
+// 异步任务
+public static <T> Observable<T> fromFuture(Future<? extends T> future)
+// 异步任务 + 超时时间
+public static <T> Observable<T> fromFuture(Future<? extends T> future, long timeout, TimeUnit unit)
+// 异步任务 + 超时时间 + 线程调度器
+public static <T> Observable<T> fromFuture(Future<? extends T> future, long timeout, TimeUnit unit, Scheduler scheduler)
+// 异步任务 + 线程调度器
+public static <T> Observable<T> fromFuture(Future<? extends T> future, Scheduler scheduler)
+//Reactive Streams中的发布者，使用方式类似create操作符，事件的发送由发布者(被观察者)自行决定
+public static <T> Observable<T> fromPulisher(Publisher<? extends T> pulisher)
+```
+
+1.  fromArray / fromIterable
+
+   ```kotlin
+   // fromArray简单使用  
+   val events: Array<String> = arrayOf("1", "2", "3")
+       Observable.fromArray(*events)
+           .subscribe(object : Observer<String> {
+               override fun onSubscribe(d: Disposable) {
+                   Log.d(Constants.TAG, "onSubscribe: ")
+               }
+   
+               override fun onNext(t: String) {
+                   Log.d(Constants.TAG, "onNext: value = $t")
+               }
+   
+               override fun onError(e: Throwable) {
+                   Log.d(Constants.TAG, "onError: ")
+               }
+   
+               override fun onComplete() {
+                   Log.d(Constants.TAG, "onComplete: ")
+               }
+           })
+   ```
+
+   ![fromArray操作符](https://github.com/MirDong/PictureGo/blob/master/blog/observable_from_array.png?raw=true)
+
+2. fromIterable
+
+   ```kotlin
+   val events: List<String> = listOf("4", "5", "6")
+       Observable.fromIterable(events)
+           .subscribe(object : Observer<String> {
+               override fun onSubscribe(d: Disposable) {
+                   Log.d(Constants.TAG, "onSubscribe: ")
+               }
+   
+               override fun onNext(t: String) {
+                   Log.d(Constants.TAG, "onNext: value = $t")
+               }
+   
+               override fun onError(e: Throwable) {
+                   Log.d(Constants.TAG, "onError: ")
+               }
+   
+               override fun onComplete() {
+                   Log.d(Constants.TAG, "onComplete: ")
+               }
+           })
+   ```
+
+   ![fromIterable示意图](https://github.com/MirDong/PictureGo/blob/master/blog/observable_from_iterable.png?raw=true)
+
+3. fromCallable
+
+   Callable位于java.util.concurrent包下，和Runnable类似， 但是有返回值，使用fromCallable 发出的事件时从主线程发出的，不订阅则不会执行call里面的操作，使用fromCallable注意一下三点：
+
+   (1). 涉及耗时任务使用subscribeOn切换订阅线程
+
+   (2). 执行耗时任务时， Observable发射值使用ObserveOn切换到主线程接收
+
+   (3). 为避免内存泄漏，在onDestroy()中取消订阅
+
+   ![fromCallable操作符](https://github.com/MirDong/PictureGo/blob/master/blog/observable_from_callable.png?raw=true)
+
+   ```kotlin
+   Observable.fromCallable(object : Callable<String> {
+           override fun call(): String {
+               // 其他操作
+   
+               return "Callable"
+           }
+   
+       })
+           .subscribe(object : Observer<String> {
+               override fun onSubscribe(d: Disposable) {
+                   Log.d(Constants.TAG, "onSubscribe: ")
+               }
+   
+               override fun onNext(t: String) {
+                   Log.d(Constants.TAG, "onNext: value = $t")
+               }
+   
+               override fun onError(e: Throwable) {
+                   Log.d(Constants.TAG, "onError: ")
+               }
+   
+               override fun onComplete() {
+                   Log.d(Constants.TAG, "onComplete: ")
+               }
+           })
+   ```
+
+   
+
+4. fromFuture
+
+   fromFuture有4个重载方法，可以指定异步任务，超时时间，线程调度器。Future接口位于java.util.concurrent包下,主要作用是对Runnable和Callable异步任务判断是否执行，以及任务结果获取与取消。Runnable和Callable伴随线程执行，意味着fromFuture发出的事件从子线程发出。
+
+   创建fromFuture
+
+   ```kotlin
+   /**
+    * 第一步， 创建一个Callable
+    */
+   private class TaskCallable : Callable<String> {
+       override fun call(): String {
+           Log.d(Constants.TAG, "任务开始...")
+           Thread.sleep(2000)
+           Log.d(Constants.TAG, "任务结束...")
+           return "TaskCallable"
+       }
+   
+   }
+   
+   // 第二步： 创建一个FutureTask
+       val call = TaskCallable()
+       val future = FutureTask<String>(call)
+   
+   // 第三步：执行Callable
+       Observable.fromFuture(future)
+   		// 执行future
+   		.doOnSubscribe { future.run() }
+           .subscribeOn(Schedulers.io())
+           .observeOn(AndroidSchedulers.mainThread())
+           .subscribe(object : Observer<String> {
+               override fun onSubscribe(d: Disposable) {
+                   Log.d(Constants.TAG, "onSubscribe: ")
+               }
+   
+               override fun onNext(t: String) {
+                   Log.d(Constants.TAG, "onNext: value = $t")
+               }
+   
+               override fun onError(e: Throwable) {
+                   Log.d(Constants.TAG, "onError: ")
+               }
+   
+               override fun onComplete() {
+                   Log.d(Constants.TAG, "onComplete: ")
+               }
+           })
+   ```
+
+   fromFuture操作符示意图：
+
+   ![fromFuture操作符](https://github.com/MirDong/PictureGo/blob/master/blog/observale_from_future.png?raw=true)
+
+5. 
