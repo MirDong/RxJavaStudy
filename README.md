@@ -155,7 +155,7 @@ public static <T> Observable<T> fromFuture(Future<? extends T> future, Scheduler
 public static <T> Observable<T> fromPulisher(Publisher<? extends T> pulisher)
 ```
 
-1.  fromArray / fromIterable
+1. ####  fromArray / fromIterable
 
    ```kotlin
    // fromArray简单使用  
@@ -182,7 +182,7 @@ public static <T> Observable<T> fromPulisher(Publisher<? extends T> pulisher)
 
    ![fromArray操作符](https://github.com/MirDong/PictureGo/blob/master/blog/observable_from_array.png?raw=true)
 
-2. fromIterable
+2. #### fromIterable
 
    ```kotlin
    val events: List<String> = listOf("4", "5", "6")
@@ -208,7 +208,7 @@ public static <T> Observable<T> fromPulisher(Publisher<? extends T> pulisher)
 
    ![fromIterable示意图](https://github.com/MirDong/PictureGo/blob/master/blog/observable_from_iterable.png?raw=true)
 
-3. fromCallable
+3. #### fromCallable
 
    Callable位于java.util.concurrent包下，和Runnable类似， 但是有返回值，使用fromCallable 发出的事件时从主线程发出的，不订阅则不会执行call里面的操作，使用fromCallable注意一下三点：
 
@@ -250,7 +250,7 @@ public static <T> Observable<T> fromPulisher(Publisher<? extends T> pulisher)
 
    
 
-4. fromFuture
+4. #### fromFuture
 
    fromFuture有4个重载方法，可以指定异步任务，超时时间，线程调度器。Future接口位于java.util.concurrent包下,主要作用是对Runnable和Callable异步任务判断是否执行，以及任务结果获取与取消。Runnable和Callable伴随线程执行，意味着fromFuture发出的事件从子线程发出。
 
@@ -272,12 +272,10 @@ public static <T> Observable<T> fromPulisher(Publisher<? extends T> pulisher)
    
    // 第二步： 创建一个FutureTask
        val call = TaskCallable()
-       val future = FutureTask<String>(call)
+       val future: Future<String> = Executors.newSingleThreadExecutor().submit(call)
    
    // 第三步：执行Callable
        Observable.fromFuture(future)
-   		// 执行future
-   		.doOnSubscribe { future.run() }
            .subscribeOn(Schedulers.io())
            .observeOn(AndroidSchedulers.mainThread())
            .subscribe(object : Observer<String> {
@@ -303,4 +301,146 @@ public static <T> Observable<T> fromPulisher(Publisher<? extends T> pulisher)
 
    ![fromFuture操作符](https://github.com/MirDong/PictureGo/blob/master/blog/observale_from_future.png?raw=true)
 
-5. 
+   fromFuture超时：
+
+   ```kotlin
+   Observable.fromFuture(future, delayMillis, TimeUnit.MILLISECONDS, Schedulers.io())
+   // ...
+   ```
+
+   发生超时，由于不能在指定时间内完成任务，会触发onError
+
+   >D/RxJavaObserver: 任务开始...
+   >D/RxJavaObserver: onSubscribe: 
+   >
+   >D/RxJavaObserver: onError:
+   >
+   >D/RxJavaObserver: 任务结束...
+
+   异步任务取消： future可以随意取消任务
+
+   ```kotlin
+   fun cancelTask() {
+       val futureTask = fromFuture()
+       Thread.sleep(500)
+       if (futureTask.isDone) {
+           Log.d(Constants.TAG," 任务已经完成")
+       } else {
+           Log.d(Constants.TAG," 任务正在进行")
+           val cancel = futureTask.cancel(true)
+           Log.d(Constants.TAG," 任务是否取消-->cancel = $cancel")
+           Log.d(Constants.TAG," 任务是否取消-->isCancel = ${futureTask.isCancelled}")
+       }
+   }
+   ```
+
+   500ms后，取消正在执行的异步任务。
+
+   ### defer操作符
+
+   使用defer创建Observable时，只有在订阅时才会创建Observable并发送相关的事件，下面是defer操作符的使用
+
+   ```kotlin
+   val observable = Observable.defer {
+           Log.d(Constants.TAG, "defer ")
+           Observable.just("one")
+       }
+       Log.d(Constants.TAG, "observer ")
+       observable.subscribe(object : Observer<String> {
+           override fun onSubscribe(d: Disposable) {
+               Log.d(Constants.TAG, "onSubscribe: ")
+           }
+   
+           override fun onNext(t: String) {
+               Log.d(Constants.TAG, "onNext: value = $t")
+           }
+   
+           override fun onError(e: Throwable) {
+               Log.d(Constants.TAG, "onError: ")
+           }
+   
+           override fun onComplete() {
+               Log.d(Constants.TAG, "onComplete: ")
+           }
+   
+       })
+   ```
+
+   执行结果：
+
+   D/RxJavaObserver: observer 
+   D/RxJavaObserver: defer 
+    D/RxJavaObserver: onSubscribe: 
+   D/RxJavaObserver: onNext: value = one
+   D/RxJavaObserver: onComplete: 
+
+   类似于懒加载，在需要订阅时创建，每次订阅都会创建新的Observable操作符示意图：
+
+   ![defer](https://raw.github.com/wiki/ReactiveX/RxJava/images/rx-operators/defer.png)
+
+   ### empty操作符
+
+   使用empty操作符可以创建一个不发送任何数据，但正常终止的Observable。会立即执行onComplete（）
+
+   ```kotlin
+   Observable.empty<Any>().subscribe(object : Observer<Any> {
+           override fun onSubscribe(d: Disposable) {
+               Log.d(Constants.TAG, "onSubscribe: ")
+           }
+   
+           override fun onNext(t: Any) {
+               Log.d(Constants.TAG, "onNext: value = $t")
+           }
+   
+           override fun onError(e: Throwable) {
+               Log.d(Constants.TAG, "onError: ")
+           }
+   
+           override fun onComplete() {
+               Log.d(Constants.TAG, "onComplete: ")
+           }
+       })
+   ```
+
+   类似于Handler发送一个空消息，没有实际数据
+
+   执行结果：
+
+   D/RxJavaObserver: onSubscribe: 
+   D/RxJavaObserver: onComplete: 
+
+   empty示意图：
+
+   ![empty操作符](https://raw.github.com/wiki/ReactiveX/RxJava/images/rx-operators/empty.png)
+
+   ### never操作符
+
+   使用never操作符可以创建一个不发生任何数据也不终止的Observable
+
+   ```kotlin
+   Observable.never<Any>().subscribe(object : Observer<Any> {
+           override fun onSubscribe(d: Disposable) {
+               Log.d(Constants.TAG, "onSubscribe: ")
+           }
+   
+           override fun onNext(t: Any) {
+               Log.d(Constants.TAG, "onNext: value = $t")
+           }
+   
+           override fun onError(e: Throwable) {
+               Log.d(Constants.TAG, "onError: ")
+           }
+   
+           override fun onComplete() {
+               Log.d(Constants.TAG, "onComplete: ")
+           }
+       })
+   ```
+
+   执行结果：
+
+   D/RxJavaObserver: onSubscribe: 
+
+   never操作符示意图：
+
+   ![never操作符](https://raw.github.com/wiki/ReactiveX/RxJava/images/rx-operators/never.png)
