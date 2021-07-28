@@ -444,3 +444,153 @@ public static <T> Observable<T> fromPulisher(Publisher<? extends T> pulisher)
    never操作符示意图：
 
    ![never操作符](https://raw.github.com/wiki/ReactiveX/RxJava/images/rx-operators/never.png)
+
+### timer操作符
+
+timer 操作符可以创建一个带延时的发送固定数值0的Observable，还可以指定线程调度器。 timer重载方法：
+
+```java
+// 延时
+public static Observable<Long> timer(long delay, TimeUnit unit)
+// 延时 + 线程调度器
+public static Observable<Long> timer(long delay, TimeUnit unit, Scheduler scheduler)
+```
+
+
+
+```kotlin
+Observable.timer(2, TimeUnit.SECONDS, Schedulers.io())
+        .subscribe(object : Observer<Long> {
+            override fun onSubscribe(d: Disposable) {
+                Log.d(Constants.TAG, "onSubscribe: ")
+            }
+
+            override fun onNext(t: Long) {
+                Log.d(Constants.TAG, "onNext: value = $t, ${Thread.currentThread().name}")
+            }
+
+            override fun onError(e: Throwable) {
+                Log.d(Constants.TAG, "onError: ")
+            }
+
+            override fun onComplete() {
+                Log.d(Constants.TAG, "onComplete: ")
+            }
+        })
+```
+
+
+
+执行结果：
+
+2021-07-27 13:35:52.699 D/RxJavaObserver: onSubscribe: 
+2021-07-27 13:35:54.702 D/RxJavaObserver: onNext: value = 0, RxCachedThreadScheduler-1
+2021-07-27 13:35:54.703 D/RxJavaObserver: onComplete: 
+
+可以看到，在订阅2s后，发送数值0
+
+timer操作符示意图：
+
+![timer操作符](https://raw.github.com/wiki/ReactiveX/RxJava/images/rx-operators/timer.s.png)
+
+添加定时器延时功能，在延时后，发送Long类型数值0
+
+### interval操作符
+
+使用interval操作符可以创建一个可以以固定时间间隔发送整数值的Observable， interval可以指定初始延时时间、时间间隔、线程调度器等，interval重载方法如下：
+
+```java
+// 初始延时 + 时间间隔
+public static Observable<Long> interval(long initialDelay, long period, TimeUnit unit)
+// 初始延时 + 时间间隔 + 线程调度器    
+public static Observable<Long> interval(long initialDelay, long period, TimeUnit unit， Scheduler scheduler)
+// 时间间隔
+public static Observable<Long> interval(long period, TimeUnit unit)
+时间间隔 + 线程调度器
+public static Observable<Long> interval(long period, TimeUnit unit， Scheduler scheduler)
+```
+
+
+
+```kotlin
+Observable.interval(1, TimeUnit.SECONDS)
+        .subscribe(object : Observer<Long> {
+            override fun onSubscribe(d: Disposable) {
+                Log.d(Constants.TAG, "onSubscribe: ")
+            }
+
+            override fun onNext(t: Long) {
+                Log.d(Constants.TAG, "onNext: value = $t, ${Thread.currentThread().name}")
+            }
+
+            override fun onError(e: Throwable) {
+                Log.d(Constants.TAG, "onError: ")
+            }
+
+            override fun onComplete() {
+                Log.d(Constants.TAG, "onComplete: ")
+            }
+        })
+```
+
+
+
+执行结果：
+
+2021-07-28 09:57:53.261  D/RxJavaObserver: onSubscribe: 
+2021-07-28 09:57:54.267  D/RxJavaObserver: onNext: value = 0, RxComputationThreadPool-1
+2021-07-28 09:57:55.266  D/RxJavaObserver: onNext: value = 1, RxComputationThreadPool-1
+2021-07-28 09:57:56.267  D/RxJavaObserver: onNext: value = 2, RxComputationThreadPool-1
+2021-07-28 09:57:57.266  D/RxJavaObserver: onNext: value = 3, RxComputationThreadPool-1
+2021-07-28 09:57:58.266  D/RxJavaObserver: onNext: value = 4, RxComputationThreadPool-1
+2021-07-28 09:57:59.266  D/RxJavaObserver: onNext: value = 5, RxComputationThreadPool-1
+
+每间隔1s发送一次数值，适合计时，计数场景，默认是计算型线程池
+
+![操作符示意图](https://raw.github.com/wiki/ReactiveX/RxJava/images/rx-operators/interval.png)
+
+### range操作符
+
+使用range操作符可以创建一个发送指定整数范围值的Observable，声明方法有2个
+
+```kotlin
+// int
+public static Observable<Integer> range(final int start, final int count)
+// long 
+public static Observable<Integer> rangeLong(long start, long count)
+```
+
+```kotlin
+Observable.range(1, 5)
+        .subscribe(object : Observer<Int> {
+            override fun onSubscribe(d: Disposable) {
+                Log.d(Constants.TAG, "onSubscribe: ")
+            }
+
+            override fun onNext(t: Int) {
+                Log.d(Constants.TAG, "onNext: value = $t, ${Thread.currentThread().name}")
+            }
+
+            override fun onError(e: Throwable) {
+                Log.d(Constants.TAG, "onError: ")
+            }
+
+            override fun onComplete() {
+                Log.d(Constants.TAG, "onComplete: ")
+            }
+        })
+```
+
+执行结果：
+
+2021-07-28 10:14:27.109  D/RxJavaObserver: onSubscribe: 
+2021-07-28 10:14:27.110  D/RxJavaObserver: onNext: value = 1, main
+2021-07-28 10:14:27.110  D/RxJavaObserver: onNext: value = 2, main
+2021-07-28 10:14:27.110  D/RxJavaObserver: onNext: value = 3, main
+2021-07-28 10:14:27.110  D/RxJavaObserver: onNext: value = 4, main
+2021-07-28 10:14:27.110  D/RxJavaObserver: onNext: value = 5, main
+2021-07-28 10:14:27.110  D/RxJavaObserver: onComplete: 
+
+range操作符示意图：
+
+![range操作符示意图](https://raw.github.com/wiki/ReactiveX/RxJava/images/rx-operators/range.png)
